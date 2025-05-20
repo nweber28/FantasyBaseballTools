@@ -1,7 +1,9 @@
 from django.shortcuts import render, HttpResponse
+from django.http import JsonResponse
 from .models import ESPNService
 
 # Create your views here.
 def player_table(request):
-    playerData = ESPNService.fetch_player_data()
-    return render(request, 'players/player_table.html', {'players': playerData})
+    players = ESPNService.fetch_player_data()
+    players = players[:100]
+    return JsonResponse({'players': players})

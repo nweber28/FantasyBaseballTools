@@ -7,6 +7,8 @@ import logging
 import pandas as pd
 from typing import Dict, Any, Optional, List, Tuple
 
+from backend.settings import cookies, DEFAULT_LEAGUE_ID
+
 logger = logging.getLogger(__name__)
 
 class ESPNService:
@@ -15,7 +17,7 @@ class ESPNService:
     BASE_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb"
     
     @staticmethod
-    def fetch_player_data(cookies: dict, season_id: int = 2025) -> Optional[Dict[str, Any]]:
+    def fetch_player_data(cookies: dict = cookies, season_id: int = 2025) -> Optional[Dict[str, Any]]:
         """
         Fetch all player data from ESPN.
         
@@ -48,10 +50,10 @@ class ESPNService:
             return data
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching ESPN data: {e}")
-            return None
+            return []
     
     @staticmethod
-    def fetch_teams_data(league_id: str, cookies: dict, season_id: int = 2025) -> Optional[Dict[str, Any]]:
+    def fetch_teams_data(league_id: str = DEFAULT_LEAGUE_ID, cookies: dict = cookies, season_id: int = 2025) -> Optional[Dict[str, Any]]:
         """
         Fetch teams data for a specific league.
         
@@ -87,7 +89,7 @@ class ESPNService:
             return None
     
     @staticmethod
-    def fetch_team_rosters(league_id: str, cookies: dict, season_id: int = 2025) -> Optional[Dict[str, Any]]:
+    def fetch_team_rosters(league_id: str = DEFAULT_LEAGUE_ID, cookies: dict = cookies, season_id: int = 2025) -> Optional[Dict[str, Any]]:
         """
         Fetch team rosters for a specific league.
         
