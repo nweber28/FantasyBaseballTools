@@ -1,0 +1,5 @@
+Draft picks endpoint 
+https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/1310196412?view=mDraftDetail&view=mSettings&view=mTeam&view=modular&view=mNav
+
+Player info endpoint
+https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/2025/players?scoringPeriodId=0&view=players_wl
