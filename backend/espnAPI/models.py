@@ -4,6 +4,7 @@ Service for interacting with ESPN Fantasy Baseball API.
 import requests
 from django.db import models
 import logging
+import json
 import pandas as pd
 from typing import Dict, Any, Optional, List, Tuple
 
@@ -14,8 +15,28 @@ logger = logging.getLogger(__name__)
 class ESPNService:
     """Service for interacting with ESPN Fantasy Baseball API."""
     
+    # Utility Functions
+    @staticmethod
+    def get_applied_total(stats_list: List[Dict[str, Any]], target_year: int = 2025) -> float:
+        """
+        Extract the appliedTotal from a player's stats where statSplitTypeId == 0 and seasonId == target_year.
+
+        Args:
+            stats_list: List of stats dictionaries
+            target_year: Season year to match
+
+        Returns:
+            The appliedTotal value or 0 if not found
+        """
+        for stat in stats_list:
+            if stat.get("seasonId") == target_year and stat.get("statSplitTypeId") == 0:
+                return stat.get("appliedTotal", 0)
+        return 0
+
+    # Common URL for all calls
     BASE_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb"
     
+    # Fetches all players rostered and non-rostered
     @staticmethod
     def fetch_player_data(cookies: dict = cookies, season_id: int = 2025) -> Optional[Dict[str, Any]]:
         """
@@ -53,6 +74,7 @@ class ESPNService:
             logger.error(f"Error fetching ESPN data: {e}\n\n")
             return []
     
+    # returns basic team data, abbreviations, small json call
     @staticmethod
     def fetch_teams_data(league_id: str = DEFAULT_LEAGUE_ID, cookies: dict = cookies, season_id: int = 2025) -> Optional[Dict[str, Any]]:
         """
@@ -89,58 +111,19 @@ class ESPNService:
             logger.error(f"Error fetching ESPN teams data: {e}\n\n")
             return None
     
-    @staticmethod
-    def fetch_team_rosters(league_id: str = DEFAULT_LEAGUE_ID, cookies: dict = cookies, season_id: int = 2025) -> Optional[Dict[str, Any]]:
-        """
-        Fetch team rosters for a specific league.
-        
-        Args:
-            league_id: The ESPN league ID
-            season_id: The season ID to fetch data for
-            
-        Returns:
-            Dictionary of team rosters or None if request fails
-        """
-        url = f"{ESPNService.BASE_URL}/seasons/{season_id}/segments/0/leagues/{league_id}?view=mRoster"
-        
-        headers = {
-            "sec-ch-ua-platform": "macOS",
-            "Referer": "https://fantasy.espn.com/",
-            "sec-ch-ua": '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-            "X-Fantasy-Platform": "kona-PROD-ea1dac81fac83846270c371702992d3a2f69aa70",
-            "sec-ch-ua-mobile": "?0",
-            "X-Fantasy-Source": "kona",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-            "Accept": "application/json"
-        }
-        
-        try:
-            logger.info(f"Fetching ESPN team rosters for league {league_id}")
-            response = requests.get(url, headers=headers, cookies=cookies)
-            response.raise_for_status()
-            data = response.json()
-            
-            if 'teams' in data:
-                logger.info(f"Successfully fetched roster data with {len(data['teams'])} teams")
-            else:
-                logger.warning(f"Roster data missing 'teams' key. Keys: {list(data.keys())}")
-                
-            return data
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching ESPN team rosters: {e}\n\n")
-            return None
-        
-
+    # all draft data from given year
     @staticmethod
     def fetch_league_draft_data(cookies: dict = cookies, season_id: int = 2025, league_id: str = DEFAULT_LEAGUE_ID) -> Optional[Dict[str, Any]]:
         """
-        Fetch all player data from ESPN.
+        Fetch all draft data from ESPN.
         
         Args:
             season_id: The season ID to fetch data for
+            cookies: swid and espn2
+            league_id: id of fantasy league
             
         Returns:
-            Dictionary of player data or None if request fails
+            Dictionary of draft data or None if request fails
         Base URL
             https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb
 
@@ -171,3 +154,76 @@ class ESPNService:
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching ESPN draft data: {e}\n\n")
             return []
+
+    # fetches all rostered player data
+    @staticmethod
+    def fetch_player_points_data(cookies: dict = cookies, season_id: int = 2025, league_id: str = DEFAULT_LEAGUE_ID) -> Optional[Dict[str, Any]]:
+        """
+        Fetch all player points data from ESPN.
+        Would be ideal to do this just for drafted players to start.
+        May expand to all players rostered at some point or another in the future.
+        
+        Args:
+            season_id: The season ID to fetch data for
+            cookies: swid and espn2
+            league_id: id of fantasy league
+            
+        Returns:
+            Dictionary of draft data or None if request fails
+        Base URL
+        https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/
+
+        Rest of URL
+        seasons/2025/segments/0/leagues/1310196412?view=mRoster
+
+        """
+
+        url = f"{ESPNService.BASE_URL}/seasons/{season_id}/segments/0/leagues/{league_id}?&view=mRoster"
+        logger.info(f"Full url: " + url)
+        
+        headers  = {
+            'Connection': 'keep-alive',
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36',
+        }
+        
+        try:
+            logger.info("Fetching ESPN player points data")
+            response = requests.get(url, headers=headers, cookies=cookies)
+            response.raise_for_status()
+            data = response.json()
+            
+            logger.info(f"Points response keys: {list(data.keys())}")
+            teams = data.get("teams", {})
+            logger.info(f"Successfully fetched {len(teams)} teams")
+            
+            # group players by team
+            team_players = []
+            for team in teams:
+                team_id = team.get("id")
+                
+                players = []
+                for entry in team.get("roster", {}).get("entries", []):
+                    player = entry.get("playerPoolEntry", {})
+                    players.append({
+                        "id": player.get("id"),
+                        "fullName": player.get("player", {}).get("fullName"),
+                        "position": player.get("player", {}).get("defaultPositionId"),
+                        "proTeam": player.get("player", {}).get("proTeamId"),
+                        "points": ESPNService.get_applied_total(entry.get("playerPoolEntry", {}).get("player", {}).get("stats", []), season_id)
+                    })
+                
+                team_players.append({
+                    "teamId": team_id,
+                    "players": players
+                })
+
+                logger.info("Team players: %s", json.dumps(team_players, indent=2))
+                logger.info(f"Successfully fetched team")
+
+            return team_players        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching ESPN player points data: {e}\n\n")
+            return []
+        
+

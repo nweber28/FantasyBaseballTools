@@ -11,5 +11,10 @@ def player_table(request):
 # Create your views here.
 def draft_table(request):
     draftPicks = ESPNService.fetch_league_draft_data()
-    draftPicks = draftPicks[:100]
+    #draftPicks = draftPicks[:100]
     return JsonResponse({'draftPicks': draftPicks})
+
+def player_points_table(request):
+    playerPoints = ESPNService.fetch_player_points_data()
+    playerPoints = playerPoints[:100]
+    return JsonResponse({'playerPoints': playerPoints})
