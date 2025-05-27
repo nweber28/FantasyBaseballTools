@@ -5,6 +5,7 @@ import requests
 from django.db import models
 import logging
 import json
+import sqlite3
 import pandas as pd
 from typing import Dict, Any, Optional, List, Tuple
 
@@ -12,6 +13,38 @@ from backend.settings import cookies, DEFAULT_LEAGUE_ID
 
 logger = logging.getLogger(__name__)
 
+class DraftPick(models.Model):
+    keeper = models.BooleanField(default=False)
+    player_id = models.IntegerField()
+    round_id = models.IntegerField()
+    round_pick_number = models.IntegerField()
+    fantasy_team_id = models.IntegerField()
+    overall_pick_number = models.IntegerField()
+
+    def __str__(self):
+        return "Player Id " + str(self.player_id) + ", Pick #" + str(self.overall_pick_number)
+    
+    @classmethod
+    def create(cls, keeper, player_id, round_id, round_pick_number, fantasy_team_id, overall_pick_number):
+        draft_pick = cls(keeper=keeper, 
+                         player_id=player_id, 
+                         round_id=round_id, 
+                         round_pick_number=round_pick_number, 
+                         fantasy_team_id=fantasy_team_id, 
+                         overall_pick_number=overall_pick_number)
+        return draft_pick
+    
+
+class Player(models.Model):
+    player_id = models.IntegerField()
+    player_name = models.CharField(max_length=50)
+    player_points = models.IntegerField()
+
+    def __str__(self):
+        return self.player_name
+
+
+# static methods used to interact with ESPNAPI
 class ESPNService:
     """Service for interacting with ESPN Fantasy Baseball API."""
     
@@ -150,6 +183,22 @@ class ESPNService:
             logger.info(f"Draft response keys: {list(data.keys())}")
             draft_picks = data.get("draftDetail", {}).get("picks", [])
             logger.info(f"Successfully fetched {len(draft_picks)} draft picks")
+
+            # Save to Draft Picks model
+
+            for pick in draft_picks:
+                draftPick = DraftPick.create(
+                    pick.get("reservedForKeeper"),
+                    pick.get("playerId"),
+                    pick.get("roundId"),
+                    pick.get("roundPickNumber"),
+                    pick.get("teamId"),
+                    pick.get("overallPickNumber")
+                    )
+                draftPick.save()
+
+            logger.info(f"Successfully created {len(draft_picks)} DraftPicks objects")
+
             return draft_picks        
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching ESPN draft data: {e}\n\n")
@@ -225,5 +274,3 @@ class ESPNService:
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching ESPN player points data: {e}\n\n")
             return []
-        
-

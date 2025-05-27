@@ -57,7 +57,7 @@ function Home() {
 
       <div>
         <h1>Draft Picks</h1>
-        <button onClick={fetchDraftPicks}>Load Draft Picks</button>
+        {/*<button onClick={fetchDraftPicks}>Load Draft Picks</button>*/}
         {draftPicks.length > 0 && (
           <table border="1" cellPadding="5">
             <thead>
