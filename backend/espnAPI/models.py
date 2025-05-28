@@ -39,9 +39,22 @@ class Player(models.Model):
     player_id = models.IntegerField()
     player_name = models.CharField(max_length=50)
     player_points = models.IntegerField()
+    fantasy_team_id = models.IntegerField(default=0) # if not on team currently
+    position_id = models.IntegerField(default=0)
+    pro_team = models.IntegerField(default=0)
 
     def __str__(self):
         return self.player_name
+    
+    @classmethod
+    def create(cls, player_id, player_name, player_points, fantasy_team_id, position_id, pro_team):
+        player = cls(player_id=player_id, 
+                         player_name=player_name, 
+                         player_points=player_points, 
+                         fantasy_team_id=fantasy_team_id, 
+                         position_id=position_id,
+                         pro_team=pro_team)
+        return player
 
 
 # static methods used to interact with ESPNAPI
@@ -248,27 +261,63 @@ class ESPNService:
             
             # group players by team
             team_players = []
+            create_operations = 0
+            update_operations = 0
+
             for team in teams:
                 team_id = team.get("id")
                 
                 players = []
                 for entry in team.get("roster", {}).get("entries", []):
                     player = entry.get("playerPoolEntry", {})
+
+                    apiPoints = ESPNService.get_applied_total(entry.get("playerPoolEntry", {}).get("player", {}).get("stats", []), season_id)
+                    apiPlayerId = player.get("id")
+                    apiPlayerName = player.get("player", {}).get("fullName")
+                    apiPlayerPosition = player.get("player", {}).get("defaultPositionId")
+                    apiPlayerProTeam = player.get("player", {}).get("proTeamId")
+
                     players.append({
-                        "id": player.get("id"),
-                        "fullName": player.get("player", {}).get("fullName"),
-                        "position": player.get("player", {}).get("defaultPositionId"),
-                        "proTeam": player.get("player", {}).get("proTeamId"),
-                        "points": ESPNService.get_applied_total(entry.get("playerPoolEntry", {}).get("player", {}).get("stats", []), season_id)
+                        "id": apiPlayerId,
+                        "fullName": apiPlayerName,
+                        "position": apiPlayerPosition,
+                        "proTeam": apiPlayerProTeam,
+                        "points": apiPoints
                     })
+
+                    # save or update player record
+                    player_id_val = player.get("id")
+                    if Player.objects.filter(player_id=player_id_val).exists():
+                        # player exists, update record
+                        dbPlayer = Player.objects.filter(player_id=player_id_val).first()
+                        if dbPlayer:
+                            dbPlayer.player_points = apiPoints
+                            dbPlayer.position_id = apiPlayerPosition
+                            dbPlayer.pro_team = apiPlayerProTeam
+                            update_operations += 1
+                        else:
+                            logger.warning(f"Expected player with player_id = {player_id_val} but none was found")
+                    else:
+                        # player does not exist, create new record
+                        dbPlayer = Player.create(apiPlayerId,
+                                      apiPlayerName,
+                                      apiPoints,
+                                      team_id,
+                                      apiPlayerPosition,
+                                      apiPlayerProTeam)
+                        dbPlayer.save()
+                        create_operations += 1
                 
                 team_players.append({
                     "teamId": team_id,
                     "players": players
                 })
 
-                logger.info("Team players: %s", json.dumps(team_players, indent=2))
+                #logger.info("Team players: %s", json.dumps(team_players, indent=2))
                 logger.info(f"Successfully fetched team")
+            
+            logger.info(f"Successfully created " + str(create_operations) + " player records")
+            logger.info(f"Successfully updated " + str(update_operations) + " player records")
 
             return team_players        
         except requests.exceptions.RequestException as e:
