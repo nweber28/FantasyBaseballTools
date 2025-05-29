@@ -1,6 +1,7 @@
 from django.shortcuts import render, HttpResponse
 from django.http import JsonResponse
 from .models import ESPNService
+from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
 def player_table(request):
@@ -18,3 +19,9 @@ def player_points_table(request):
     playerPoints = ESPNService.fetch_player_points_data()
     playerPoints = playerPoints[:100]
     return JsonResponse({'playerPoints': playerPoints})
+
+@csrf_exempt
+def calculate_draft_metric(request):
+    ESPNService.calculate_draft_metric()
+    return JsonResponse({"status": "success", "message": "Metrics calculated"})
+    

@@ -2,11 +2,15 @@
 Service for interacting with ESPN Fantasy Baseball API.
 """
 import requests
-from django.db import models
+from django.db import models, transaction
+from django.utils import timezone
+
 import logging
-import json
-import sqlite3
+import traceback
+
 import pandas as pd
+import numpy as np
+from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from typing import Dict, Any, Optional, List, Tuple
 
 from backend.settings import cookies, DEFAULT_LEAGUE_ID
@@ -42,18 +46,22 @@ class Player(models.Model):
     fantasy_team_id = models.IntegerField(default=0) # if not on team currently
     position_id = models.IntegerField(default=0)
     pro_team = models.IntegerField(default=0)
+    last_updated = models.DateTimeField(default=timezone.now)
+    currently_rostered = models.BooleanField(default=False)
+    draft_metric = models.DecimalField(default=0.0, max_digits=9, decimal_places=3)
 
     def __str__(self):
         return self.player_name
     
     @classmethod
-    def create(cls, player_id, player_name, player_points, fantasy_team_id, position_id, pro_team):
+    def create(cls, player_id, player_name, player_points, fantasy_team_id, position_id, pro_team, currently_rostered=False):
         player = cls(player_id=player_id, 
                          player_name=player_name, 
                          player_points=player_points, 
                          fantasy_team_id=fantasy_team_id, 
                          position_id=position_id,
-                         pro_team=pro_team)
+                         pro_team=pro_team,
+                         currently_rostered=currently_rostered)
         return player
 
 
@@ -78,6 +86,87 @@ class ESPNService:
             if stat.get("seasonId") == target_year and stat.get("statSplitTypeId") == 0:
                 return stat.get("appliedTotal", 0)
         return 0
+
+    # Calculates draft metric column for each drafted player
+    @staticmethod
+    def calculate_draft_metric():
+        """
+        Given: 
+
+        Problems: Players that are not rostered wont be returned from fetch_player_points_data,
+                    Account for players that were dropped, waivers, traded, etc.
+
+        Returns: Updated Draft Metric column
+        
+        """
+        # For each drafted player returned by player points data
+        # And for drafted players not currently rostered, may just send these to the void
+            # put these on separate list/table
+        # Create Points scored scale using pandas
+
+
+        # Collect all draft/ data
+        #draft_picks = DraftPick.objects.all()
+        #all_players = Player.objects.all()
+
+
+        # Collect rostered player data
+
+        #dropped_draft_picks = []
+
+        # Join with points data for found players
+
+        # 4 groups: drafted and currently rostered, --> player id in draft_picks and all_players, accounted for
+            #       drafted but not currently rostered, --> player id in draft_picks but not in currently_rostered, may not be in Players model, if so will be 0.0
+            #       not drafted but currently rostered, --> player id not in draft_picks but in currently_rostered, will be given 0.0
+            #       not drafted and not currently rostered, --> player id not in draft_picks, but may be in Player model, will be given 0.0
+
+        # Logic for drafted + currently rostered players
+        logger.info(f"\nCalculating Draft Metrics\n")
+        
+        # Create DataFrames from Player and DraftPick models
+        players_df = pd.DataFrame(
+            Player.objects.values("id", "player_id", "player_points")
+        )
+        draft_df = pd.DataFrame(
+            DraftPick.objects.values("player_id", "overall_pick_number")
+        )
+
+        # Calculate percentiles
+        players_df["points_percentile"] = players_df["player_points"].rank(pct=True)
+        draft_df["draft_percentile"] = draft_df["overall_pick_number"].rank(pct=True)
+
+        # Map player id to both percentiles, merged only contains drafted, currently rostered players
+        merged = pd.merge(players_df, draft_df, on="player_id", how="inner")
+
+        # Calculate the metric, replace nan vals with 0.0 if any
+        merged["draft_metric"] = (
+            merged["points_percentile"] / merged["draft_percentile"]).replace([np.inf, -np.inf], np.nan) ** 2
+        merged["draft_metric"] = merged["draft_metric"].fillna(0.0)
+
+        # Map player id to their draft metric score
+        metric_map = dict(zip(merged["id"], merged["draft_metric"]))
+
+        try:
+            # Ensures that if one value fails, no values are updated
+            with transaction.atomic():
+                for player in Player.objects.filter(id__in=metric_map.keys()):
+                    value = Decimal(metric_map[player.id]).quantize(Decimal("0.001"), rounding=ROUND_DOWN)
+                    player.draft_metric = value
+                    player.save()
+            logger.info(f"Successfully saved draft metric data")
+            return 0
+        except Exception as e:
+            logger.warning(f"\nError saving draft metric data: {e}\n{traceback.format_exc()}")
+
+
+        # create metric for all groups
+
+        # if drafted player is not found in Player model (current or former), create player record for them
+            # this is for players who were drafted and dropped before this app was made
+
+        return 0
+
 
     # Common URL for all calls
     BASE_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb"
@@ -277,14 +366,6 @@ class ESPNService:
                     apiPlayerPosition = player.get("player", {}).get("defaultPositionId")
                     apiPlayerProTeam = player.get("player", {}).get("proTeamId")
 
-                    players.append({
-                        "id": apiPlayerId,
-                        "fullName": apiPlayerName,
-                        "position": apiPlayerPosition,
-                        "proTeam": apiPlayerProTeam,
-                        "points": apiPoints
-                    })
-
                     # save or update player record
                     player_id_val = player.get("id")
                     if Player.objects.filter(player_id=player_id_val).exists():
@@ -294,6 +375,8 @@ class ESPNService:
                             dbPlayer.player_points = apiPoints
                             dbPlayer.position_id = apiPlayerPosition
                             dbPlayer.pro_team = apiPlayerProTeam
+                            dbPlayer.currently_rostered = True
+                            dbPlayer.last_updated = timezone.now
                             update_operations += 1
                         else:
                             logger.warning(f"Expected player with player_id = {player_id_val} but none was found")
@@ -304,10 +387,19 @@ class ESPNService:
                                       apiPoints,
                                       team_id,
                                       apiPlayerPosition,
-                                      apiPlayerProTeam)
+                                      apiPlayerProTeam,
+                                      True)
                         dbPlayer.save()
                         create_operations += 1
                 
+                    players.append({
+                        "id": apiPlayerId,
+                        "fullName": apiPlayerName,
+                        "position": apiPlayerPosition,
+                        "proTeam": apiPlayerProTeam,
+                        "points": apiPoints
+                    })
+
                 team_players.append({
                     "teamId": team_id,
                     "players": players
@@ -318,6 +410,9 @@ class ESPNService:
             
             logger.info(f"Successfully created " + str(create_operations) + " player records")
             logger.info(f"Successfully updated " + str(update_operations) + " player records")
+
+            # Calculate draft metric
+            ESPNService.calculate_draft_metric()
 
             return team_players        
         except requests.exceptions.RequestException as e:

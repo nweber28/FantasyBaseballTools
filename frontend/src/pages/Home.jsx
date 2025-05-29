@@ -26,8 +26,26 @@ function Home() {
       .catch((err) => console.error(err));
   };
 
+  const calculateDraftMetrics = () => {
+    fetch("http://localhost:8000/calculate-draft-metrics/", {
+      method: "POST", // ← still required
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}), // ← optional, but helps avoid issues with some servers
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Metrics calculated:", data);
+        alert(data.message || "Success");
+      })
+      .catch((err) => console.error("Error calculating metrics:", err));
+  };
+
   return (
     <div>
+      <button onClick={calculateDraftMetrics}>Calculate Draft Metrics</button>
+
       <div>
         <h1>Players</h1>
         <button onClick={fetchPlayers}>Load Players</button>
