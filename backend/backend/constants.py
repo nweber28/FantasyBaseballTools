@@ -1,5 +1,73 @@
 TOTAL_DRAFT_PICKS = 406
 
+KEEPER_PICK_VALUE = 60
+
 # Position id's
+position_id = {
+    1: "SP",
+    2: "C",
+    3: "1B",
+    4: "2B",
+    5: "3B",
+    6: "SS",
+    7: "LF",
+    8: "CF",
+    9: "RF",
+    10: "DH",
+    11: "RP"
+}
 
 # MLB team id's
+mlb_team_ids = {
+    0: "FA",
+    1: "BAL",
+    2: "BOS",
+    3: "LAA",
+    4: "CWS",
+    5: "CLE",
+    6: "DET",
+    7: "KC",
+    8: "MIL",
+    9: "MIN",
+    10: "NYY",
+    11: "ATH",
+    12: "SEA",
+    13: "TEX",
+    14: "TOR",
+    15: "ATL",
+    16: "CHC",
+    17: "CIN",
+    18: "HOU",
+    19: "LAD",
+    20: "WAS",
+    21: "NYM",
+    22: "PHI",
+    23: "PIT",
+    24: "STL",
+    25: "SDP",
+    26: "SFG",
+    27: "COL",
+    28: "MIA",
+    29: "ARI",
+    30: "TB",
+}
+
+# fantasy team name id's
+# potentially make this a web setting, since people change their acronym
+# better yet pull this info from api
+fantasy_team_abbrevs = {
+    1: "KWAN",
+    2: "MUCK",
+    4: "ROBD",
+    5: "GARY",
+    6: "CASP",
+    8: "KIDN",
+    9: "LOTR",
+    10: "BR",
+    11: "WEB",
+    12: "HELP",
+    13: "POO",
+    14: "DUNE",
+    15: "HTU",
+    16: "AVG",
+}

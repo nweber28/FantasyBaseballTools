@@ -14,6 +14,7 @@ from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from typing import Dict, Any, Optional, List, Tuple
 
 from backend.settings import cookies, DEFAULT_LEAGUE_ID
+from backend.constants import KEEPER_PICK_VALUE
 
 logger = logging.getLogger(__name__)
 
@@ -129,8 +130,11 @@ class ESPNService:
             Player.objects.values("id", "player_id", "player_points")
         )
         draft_df = pd.DataFrame(
-            DraftPick.objects.values("player_id", "overall_pick_number")
+            DraftPick.objects.values("player_id", "overall_pick_number", "keeper")
         )
+
+        # Replace overall_pick_number with KEEPER_CONSTANT for keepers
+        draft_df.loc[draft_df["keeper"] == True, "overall_pick_number"] = KEEPER_PICK_VALUE
 
         # Calculate percentiles
         players_df["points_percentile"] = players_df["player_points"].rank(pct=True)
@@ -141,7 +145,8 @@ class ESPNService:
 
         # Calculate the metric, replace nan vals with 0.0 if any
         merged["draft_metric"] = (
-            merged["points_percentile"] / merged["draft_percentile"]).replace([np.inf, -np.inf], np.nan) ** 2
+            merged["points_percentile"] / (merged["draft_percentile"] ** 2)
+        ).replace([np.inf, -np.inf], np.nan)
         merged["draft_metric"] = merged["draft_metric"].fillna(0.0)
 
         # Map player id to their draft metric score
