@@ -2,6 +2,12 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
+import {
+  MLB_TEAM_IDS,
+  FANTASY_TEAM_ABBREVS,
+  POSITION_IDS,
+} from "../static/constants";
+
 const DataTable = ({ apiUrl }) => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +27,15 @@ const DataTable = ({ apiUrl }) => {
       });
   }, [apiUrl]);
 
+  const formatValue = (key, value) => {
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (key === "pro_team") return MLB_TEAM_IDS[value] ?? "Unknown";
+    if (key === "position_id") return POSITION_IDS[value] ?? "Unknown";
+    if (key === "fantasy_team_id")
+      return FANTASY_TEAM_ABBREVS[value] ?? "Unknown";
+    return value;
+  };
+
   const handleSort = (key) => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -39,6 +54,20 @@ const DataTable = ({ apiUrl }) => {
     if (aValue === null || aValue === undefined) aValue = "";
     if (bValue === null || bValue === undefined) bValue = "";
 
+    // Handle boolean sorting
+    const isBoolean =
+      typeof aValue === "boolean" && typeof bValue === "boolean";
+    if (isBoolean) {
+      if (aValue === bValue) return 0;
+      return sortConfig.direction === "asc"
+        ? aValue === false
+          ? -1
+          : 1
+        : aValue === true
+        ? -1
+        : 1;
+    }
+
     // Check if both values are numeric
     const isNumeric =
       !isNaN(parseFloat(aValue)) &&
@@ -47,7 +76,6 @@ const DataTable = ({ apiUrl }) => {
       typeof bValue !== "boolean";
 
     if (isNumeric) {
-      // Parse floats and sort numerically
       aValue = parseFloat(aValue);
       bValue = parseFloat(bValue);
 
@@ -91,8 +119,8 @@ const DataTable = ({ apiUrl }) => {
       <tbody>
         {sortedPlayers.map((entry) => (
           <tr key={entry.id}>
-            {Object.values(entry).map((value, idx) => (
-              <td key={idx}>{value}</td>
+            {Object.entries(entry).map(([key, value], idx) => (
+              <td key={idx}>{formatValue(key, value)}</td>
             ))}
           </tr>
         ))}
