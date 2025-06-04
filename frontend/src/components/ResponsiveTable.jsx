@@ -29,9 +29,10 @@ function transformPlayerToRow(player) {
     Name: player.player_name,
     Points_Scored: player.player_points,
     Draft_Metric: player.draft_metric,
-    Position_Id: player.position_id,
-    Pro_Team: player.pro_team,
-    Rostered: player.currently_rostered ? "Yes" : "No", // boolean handled
+    Rostered: player.currently_rostered ? "Yes" : "No",
+    Fantasy_Team_Id: FANTASY_TEAM_ABBREVS[player.fantasy_team_id] || "N/A",
+    Position_Id: POSITION_IDS[player.position_id] || "N/A",
+    Pro_Team: MLB_TEAM_IDS[player.pro_team] || "N/A",
   };
 }
 
@@ -60,7 +61,7 @@ function getComparator(order, orderBy) {
 const headCells = [
   {
     id: "player_id",
-    numeric: true,
+    numeric: false,
     disablePadding: true,
     label: "Player Id",
   },
@@ -72,15 +73,21 @@ const headCells = [
   },
   {
     id: "position",
-    numeric: true,
+    numeric: false,
     disablePadding: false,
     label: "Position",
   },
   {
     id: "pro_team",
-    numeric: true,
+    numeric: false,
     disablePadding: false,
     label: "Pro Team",
+  },
+  {
+    id: "fantasy_team",
+    numeric: false,
+    disablePadding: false,
+    label: "Fantasy Team",
   },
   {
     id: "currently_rostered",
@@ -198,7 +205,7 @@ function EnhancedTableToolbar(props) {
           id="tableTitle"
           component="div"
         >
-          Nutrition
+          Draft Metrics
         </Typography>
       )}
       {numSelected > 0 ? (
@@ -358,11 +365,12 @@ export default function EnhancedTable({ apiUrl }) {
                           }}
                         />
                       </TableCell>
-                      <TableCell align="right">{row.Player_Id}</TableCell>
-                      <TableCell align="right">{row.Name}</TableCell>
-                      <TableCell align="right">{row.Position_Id}</TableCell>
-                      <TableCell align="right">{row.Pro_Team}</TableCell>
-                      <TableCell align="right">{row.Rostered}</TableCell>
+                      <TableCell align="left">{row.Player_Id}</TableCell>
+                      <TableCell align="left">{row.Name}</TableCell>
+                      <TableCell align="left">{row.Position_Id}</TableCell>
+                      <TableCell align="left">{row.Pro_Team}</TableCell>
+                      <TableCell align="left">{row.Fantasy_Team_Id}</TableCell>
+                      <TableCell align="left">{row.Rostered}</TableCell>
                       <TableCell align="right">{row.Points_Scored}</TableCell>
                       <TableCell align="right">{row.Draft_Metric}</TableCell>
                     </TableRow>
