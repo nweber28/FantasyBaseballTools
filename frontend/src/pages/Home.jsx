@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import DataTable from "../components/DataTable";
+import ResponsiveTable from "../components/ResponsiveTable.jsx";
 
 function Home() {
   const [players, setPlayers] = useState([]);
@@ -46,7 +47,7 @@ function Home() {
   return (
     <div>
       <button onClick={calculateDraftMetrics}>Calculate Draft Metrics</button>
-      <DataTable apiUrl="http://localhost:8000/api/playerData/" />
+      <ResponsiveTable apiUrl="http://localhost:8000/api/playerData/" />
 
       <div>
         <h1>Players</h1>
