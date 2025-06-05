@@ -28,7 +28,7 @@ function transformPlayerToRow(player) {
     Player_Id: player.player_id,
     Name: player.player_name,
     Points_Scored: player.player_points,
-    Draft_Metric: player.draft_metric,
+    Draft_Metric: parseFloat(player.draft_metric),
     Rostered: player.currently_rostered ? "Yes" : "No",
     Fantasy_Team_Id: FANTASY_TEAM_ABBREVS[player.fantasy_team_id] || "N/A",
     Position_Id: POSITION_IDS[player.position_id] || "N/A",
@@ -60,49 +60,49 @@ function getComparator(order, orderBy) {
 
 const headCells = [
   {
-    id: "player_id",
+    id: "Player_Id",
     numeric: false,
     disablePadding: true,
     label: "Player Id",
   },
   {
-    id: "player_name",
+    id: "Name",
     numeric: false,
     disablePadding: false,
     label: "Player Name",
   },
   {
-    id: "position",
+    id: "Position_Id",
     numeric: false,
     disablePadding: false,
     label: "Position",
   },
   {
-    id: "pro_team",
+    id: "Pro_Team",
     numeric: false,
     disablePadding: false,
     label: "Pro Team",
   },
   {
-    id: "fantasy_team",
+    id: "Fantasy_Team_Id",
     numeric: false,
     disablePadding: false,
     label: "Fantasy Team",
   },
   {
-    id: "currently_rostered",
+    id: "Rostered",
     numeric: false,
     disablePadding: false,
     label: "Currently Rostered?",
   },
   {
-    id: "points_scored",
+    id: "Points_Scored",
     numeric: true,
     disablePadding: false,
     label: "Points Scored",
   },
   {
-    id: "metric",
+    id: "Draft_Metric",
     numeric: true,
     disablePadding: false,
     label: "Metric",
@@ -110,6 +110,7 @@ const headCells = [
 ];
 
 function EnhancedTableHead(props) {
+  console.log("enhanced table");
   const {
     onSelectAllClick,
     order,
@@ -125,7 +126,7 @@ function EnhancedTableHead(props) {
   return (
     <TableHead>
       <TableRow>
-        <TableCell padding="checkbox">
+        {/* <TableCell padding="checkbox">
           <Checkbox
             color="primary"
             indeterminate={numSelected > 0 && numSelected < rowCount}
@@ -135,7 +136,7 @@ function EnhancedTableHead(props) {
               "aria-label": "select all desserts",
             }}
           />
-        </TableCell>
+        </TableCell> */}
         {headCells.map((headCell) => (
           <TableCell
             key={headCell.id}
@@ -231,7 +232,7 @@ EnhancedTableToolbar.propTypes = {
 
 export default function EnhancedTable({ apiUrl }) {
   const [order, setOrder] = React.useState("asc");
-  const [orderBy, setOrderBy] = React.useState("calories");
+  const [orderBy, setOrderBy] = React.useState("Fantasy_Team_Id");
   const [selected, setSelected] = React.useState([]);
   const [page, setPage] = React.useState(0);
   const [dense, setDense] = React.useState(false);
@@ -319,7 +320,7 @@ export default function EnhancedTable({ apiUrl }) {
   return (
     <Box sx={{ width: "100%" }}>
       {loading ? (
-        <p style={{ padding: 16 }}>Loading...</p> // Or a spinner
+        <p style={{ padding: 16 }}>Loading...</p>
       ) : (
         <Paper sx={{ width: "100%", mb: 2 }}>
           <EnhancedTableToolbar numSelected={selected.length} />
@@ -356,7 +357,7 @@ export default function EnhancedTable({ apiUrl }) {
                       selected={isItemSelected}
                       sx={{ cursor: "pointer" }}
                     >
-                      <TableCell padding="checkbox">
+                      {/* <TableCell padding="checkbox">
                         <Checkbox
                           color="primary"
                           checked={isItemSelected}
@@ -364,7 +365,7 @@ export default function EnhancedTable({ apiUrl }) {
                             "aria-labelledby": labelId,
                           }}
                         />
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell align="left">{row.Player_Id}</TableCell>
                       <TableCell align="left">{row.Name}</TableCell>
                       <TableCell align="left">{row.Position_Id}</TableCell>

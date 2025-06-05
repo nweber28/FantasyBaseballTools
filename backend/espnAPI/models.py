@@ -10,6 +10,9 @@ import traceback
 
 import pandas as pd
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from typing import Dict, Any, Optional, List, Tuple
 
@@ -123,9 +126,9 @@ class ESPNService:
             #       not drafted and not currently rostered, --> player id not in draft_picks, but may be in Player model, will be given 0.0
 
         # Logic for drafted + currently rostered players
-        logger.info(f"\nCalculating Draft Metrics\n")
-        
-        # Create DataFrames from Player and DraftPick models
+        logger.info(f"\nCalculating Draft Metrics (Regression-Based)\n")
+
+        # Step 1: Load data
         players_df = pd.DataFrame(
             Player.objects.values("id", "player_id", "player_points")
         )
@@ -133,25 +136,33 @@ class ESPNService:
             DraftPick.objects.values("player_id", "overall_pick_number", "keeper")
         )
 
-        # Replace overall_pick_number with KEEPER_CONSTANT for keepers
+        # Constants
         draft_df.loc[draft_df["keeper"] == True, "overall_pick_number"] = KEEPER_PICK_VALUE
 
-        # Calculate percentiles
-        players_df["points_percentile"] = players_df["player_points"].rank(pct=True)
-        draft_df["draft_percentile"] = draft_df["overall_pick_number"].rank(pct=True)
-
-        # Map player id to both percentiles, merged only contains drafted, currently rostered players
+        # Step 2: Merge to only get drafted & rostered players
         merged = pd.merge(players_df, draft_df, on="player_id", how="inner")
 
-        # Calculate the metric, replace nan vals with 0.0 if any
-        merged["draft_metric"] = (
-            merged["points_percentile"] / (merged["draft_percentile"] ** 2)
-        ).replace([np.inf, -np.inf], np.nan)
-        merged["draft_metric"] = merged["draft_metric"].fillna(0.0)
+        # Step 3: Fit regression model: pick# → expected points
+        X = merged[["overall_pick_number"]]
+        y = merged["player_points"]
 
-        # Map player id to their draft metric score
-        metric_map = dict(zip(merged["id"], merged["draft_metric"]))
+        model = LinearRegression()
+        model.fit(X, y)
 
+        # Step 4: Predict expected points
+        merged["expected_points"] = model.predict(X)
+
+        # Step 5: Calculate DVOE (raw) and DVOE_Z (z-score)
+        merged["dvoe"] = merged["player_points"] - merged["expected_points"]
+
+        scaler = StandardScaler()
+        merged["dvoe_z"] = scaler.fit_transform(merged[["dvoe"]])
+
+        # Step 6: Choose metric to save
+        # You can switch to "dvoe" if you want raw value instead of z-score
+        metric_map = dict(
+            zip(merged["id"], merged["dvoe_z"].replace([np.inf, -np.inf], np.nan).fillna(0.0))
+        )
         try:
             # Ensures that if one value fails, no values are updated
             with transaction.atomic():
@@ -371,6 +382,9 @@ class ESPNService:
                     apiPlayerPosition = player.get("player", {}).get("defaultPositionId")
                     apiPlayerProTeam = player.get("player", {}).get("proTeamId")
 
+                    if apiPlayerId == 32801:
+                        logger.info(f"Player: {apiPlayerName}\n Player Points {apiPoints}")
+
                     # save or update player record
                     player_id_val = player.get("id")
                     if Player.objects.filter(player_id=player_id_val).exists():
@@ -381,8 +395,9 @@ class ESPNService:
                             dbPlayer.position_id = apiPlayerPosition
                             dbPlayer.pro_team = apiPlayerProTeam
                             dbPlayer.currently_rostered = True
-                            dbPlayer.last_updated = timezone.now
+                            dbPlayer.last_updated = timezone.now()
                             update_operations += 1
+                            dbPlayer.save()
                         else:
                             logger.warning(f"Expected player with player_id = {player_id_val} but none was found")
                     else:
