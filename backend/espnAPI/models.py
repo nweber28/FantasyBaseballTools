@@ -47,7 +47,7 @@ class Player(models.Model):
     player_id = models.IntegerField()
     player_name = models.CharField(max_length=50)
     player_points = models.IntegerField()
-    fantasy_team_id = models.IntegerField(default=0) # if not on team currently
+    fantasy_team_id = models.IntegerField(default=0)
     position_id = models.IntegerField(default=0)
     pro_team = models.IntegerField(default=0)
     last_updated = models.DateTimeField(default=timezone.now)
@@ -158,8 +158,6 @@ class ESPNService:
         scaler = StandardScaler()
         merged["dvoe_z"] = scaler.fit_transform(merged[["dvoe"]])
 
-        # Step 6: Choose metric to save
-        # You can switch to "dvoe" if you want raw value instead of z-score
         metric_map = dict(
             zip(merged["id"], merged["dvoe_z"].replace([np.inf, -np.inf], np.nan).fillna(0.0))
         )
@@ -382,9 +380,6 @@ class ESPNService:
                     apiPlayerPosition = player.get("player", {}).get("defaultPositionId")
                     apiPlayerProTeam = player.get("player", {}).get("proTeamId")
 
-                    if apiPlayerId == 32801:
-                        logger.info(f"Player: {apiPlayerName}\n Player Points {apiPoints}")
-
                     # save or update player record
                     player_id_val = player.get("id")
                     if Player.objects.filter(player_id=player_id_val).exists():
@@ -430,6 +425,17 @@ class ESPNService:
             
             logger.info(f"Successfully created " + str(create_operations) + " player records")
             logger.info(f"Successfully updated " + str(update_operations) + " player records")
+
+            logger.info(f"\nUpdating non-rostered draftees\n")
+            # 1. Get a set of all player_ids that are currently rostered
+            currently_rostered_ids = {
+                player["id"]
+                for team in team_players
+                for player in team["players"]
+            }
+
+            # 2. Update all other players in the DB to set currently_rostered=False
+            Player.objects.exclude(player_id__in=currently_rostered_ids).update(currently_rostered=False)
 
             # Calculate draft metric
             ESPNService.calculate_draft_metric()

@@ -110,7 +110,6 @@ const headCells = [
 ];
 
 function EnhancedTableHead(props) {
-  console.log("enhanced table");
   const {
     onSelectAllClick,
     order,

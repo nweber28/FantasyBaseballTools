@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import DataTable from "../components/DataTable";
 import ResponsiveTable from "../components/ResponsiveTable.jsx";
 
 function Home() {
   const [players, setPlayers] = useState([]);
   const [draftPicks, setDraftPicks] = useState([]);
   const [playerPoints, setPlayerPoints] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchPlayers = () => {
     fetch("http://localhost:8000/players/")
@@ -14,6 +14,7 @@ function Home() {
       .catch((err) => console.error(err));
   };
 
+  // populates draft data base, only needed to do this once
   const fetchDraftPicks = () => {
     fetch("http://localhost:8000/draft/")
       .then((res) => res.json())
@@ -24,7 +25,10 @@ function Home() {
   const fetchPlayerPoints = () => {
     fetch("http://localhost:8000/points/")
       .then((res) => res.json())
-      .then((data) => setPlayerPoints(data.playerPoints))
+      .then((data) => {
+        setPlayerPoints(data.playerPoints);
+        setRefreshKey((prevKey) => prevKey + 1);
+      })
       .catch((err) => console.error(err));
   };
 
@@ -47,7 +51,10 @@ function Home() {
   return (
     <div>
       <button onClick={calculateDraftMetrics}>Calculate Draft Metrics</button>
-      <ResponsiveTable apiUrl="http://localhost:8000/api/playerData/" />
+      <ResponsiveTable
+        key={refreshKey}
+        apiUrl="http://localhost:8000/api/playerData/"
+      />
 
       <div>
         <h1>Players</h1>
