@@ -8,4 +8,4 @@ from backend folder, python3 manage.py runserver
 For migrations:
 navigate to app
 python3 manage.py makemigrations --name migrationName
-python3 manage,py migrate
+python3 manage.py migrate
