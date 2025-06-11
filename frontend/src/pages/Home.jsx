@@ -50,13 +50,13 @@ function Home() {
 
   return (
     <div>
-      <button onClick={calculateDraftMetrics}>Calculate Draft Metrics</button>
+      {/* <button onClick={calculateDraftMetrics}>Calculate Draft Metrics</button> */}
       <ResponsiveTable
         key={refreshKey}
         apiUrl="http://localhost:8000/api/playerData/"
       />
 
-      <div>
+      {/* <div>
         <h1>Players</h1>
         <button onClick={fetchPlayers}>Load Players</button>
         {players.length > 0 && (
@@ -81,11 +81,11 @@ function Home() {
             </tbody>
           </table>
         )}
-      </div>
+      </div> */}
 
-      <div>
+      {/* <div>
         <h1>Draft Picks</h1>
-        {/*<button onClick={fetchDraftPicks}>Load Draft Picks</button>*/}
+        <button onClick={fetchDraftPicks}>Load Draft Picks</button>
         {draftPicks.length > 0 && (
           <table border="1" cellPadding="5">
             <thead>
@@ -114,7 +114,7 @@ function Home() {
             </tbody>
           </table>
         )}
-      </div>
+      </div> */}
       <div>
         <h1>Player Points 2025</h1>
         <button onClick={fetchPlayerPoints}>Load Player Points</button>
