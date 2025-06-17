@@ -48,6 +48,7 @@ class Player(models.Model):
     player_name = models.CharField(max_length=50)
     player_points = models.IntegerField()
     fantasy_team_id = models.IntegerField(default=0)
+    draft_team_id = models.IntegerField(default=0)
     position_id = models.IntegerField(default=0)
     pro_team = models.IntegerField(default=0)
     last_updated = models.DateTimeField(default=timezone.now)
@@ -73,6 +74,10 @@ class Player(models.Model):
 class ESPNService:
     """Service for interacting with ESPN Fantasy Baseball API."""
     
+    # Common URL for all calls
+    BASE_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb"
+
+    # ----------------------------------------------------------------------------------------
     # Utility Functions
     @staticmethod
     def get_applied_total(stats_list: List[Dict[str, Any]], target_year: int = 2025) -> float:
@@ -181,48 +186,27 @@ class ESPNService:
 
         return 0
 
-
-    # Common URL for all calls
-    BASE_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb"
-    
-    # Fetches all players rostered and non-rostered
     @staticmethod
-    def fetch_player_data(cookies: dict = cookies, season_id: int = 2025) -> Optional[Dict[str, Any]]:
-        """
-        Fetch all player data from ESPN.
-        
-        Args:
-            season_id: The season ID to fetch data for
-            
-        Returns:
-            Dictionary of player data or None if request fails
-        """
-        url = f"{ESPNService.BASE_URL}/seasons/{season_id}/players?scoringPeriodId=0&view=players_wl&view=kona_player_info"
-        logger.info(f"Full url: " + url)
-        
-        headers = {
-            "X-Fantasy-Filter": '{"filterActive":{"value":true}}',
-            "sec-ch-ua-platform": "macOS",
-            "Referer": "https://fantasy.espn.com/",
-            "sec-ch-ua": '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-            "X-Fantasy-Platform": "kona-PROD-ea1dac81fac83846270c371702992d3a2f69aa70",
-            "sec-ch-ua-mobile": "?0",
-            "X-Fantasy-Source": "kona",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-            "Accept": "application/json"
-        }
-        
-        try:
-            logger.info("\n\nFetching ESPN player data")
-            response = requests.get(url, headers=headers, cookies=cookies)
-            response.raise_for_status()
-            data = response.json()
-            logger.info(f"Successfully fetched ESPN player data: {len(data)} players\n\n")
-            return data
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching ESPN data: {e}\n\n")
-            return []
-    
+    def set_player_draft_team():
+        # Get all draft picks
+        draft_picks = DraftPick.objects.all()
+
+        # Build a lookup for all players to avoid repeated DB queries
+        player_lookup = {p.player_id: p for p in Player.objects.all()}
+
+        updated_players = 0
+        for pick in draft_picks:
+            if pick.player_id in player_lookup:
+                player = player_lookup[pick.player_id]
+                player.draft_team_id = pick.fantasy_team_id
+                player.save()
+                updated_players += 1
+            else:
+                print(f"Player with player_id {pick.player_id} not found.")
+        logger.info(f"Updated draft pick info for {updated_players} players")
+    # ----------------------------------------------------------------------------------------
+    # API methods
+
     # returns basic team data, abbreviations, small json call
     @staticmethod
     def fetch_teams_data(league_id: str = DEFAULT_LEAGUE_ID, cookies: dict = cookies, season_id: int = 2025) -> Optional[Dict[str, Any]]:
@@ -390,6 +374,7 @@ class ESPNService:
                             dbPlayer.position_id = apiPlayerPosition
                             dbPlayer.pro_team = apiPlayerProTeam
                             dbPlayer.currently_rostered = True
+                            dbPlayer.fantasy_team_id = team_id
                             dbPlayer.last_updated = timezone.now()
                             update_operations += 1
                             dbPlayer.save()
