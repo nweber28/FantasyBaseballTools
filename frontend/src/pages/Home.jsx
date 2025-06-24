@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import ResponsiveTable from "../components/ResponsiveTable.jsx";
+import NavBar from "../components/NavBar.jsx";
 
 function Home() {
   const [draftPicks, setDraftPicks] = useState([]);
@@ -32,6 +33,7 @@ function Home() {
   return (
     <div>
       {/* <button onClick={calculateDraftMetrics}>Calculate Draft Metrics</button> */}
+      <NavBar />
       <ResponsiveTable
         key={refreshKey}
         apiUrl="http://localhost:8000/api/playerData/"

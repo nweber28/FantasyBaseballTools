@@ -143,12 +143,20 @@ function EnhancedTableHead(props) {
             }}
           />
         </TableCell> */}
-        {headCells.map((headCell) => (
+        {headCells.map((headCell, index) => (
           <TableCell
             key={headCell.id}
             align={headCell.numeric ? "right" : "left"}
             padding={headCell.disablePadding ? "none" : "normal"}
             sortDirection={orderBy === headCell.id ? order : false}
+            sx={{
+              ...(index === 0 && {
+                position: "sticky",
+                left: 0,
+                backgroundColor: "background.paper",
+                zIndex: 2,
+              }),
+            }}
           >
             <TableSortLabel
               active={orderBy === headCell.id}
@@ -329,7 +337,6 @@ export default function EnhancedTable({ apiUrl }) {
         <p style={{ padding: 16 }}>Loading...</p>
       ) : (
         <Paper sx={{ width: "100%", mb: 2 }}>
-          <EnhancedTableToolbar numSelected={selected.length} />
           <TableContainer>
             <Table
               sx={{ minWidth: 750 }}
@@ -373,7 +380,15 @@ export default function EnhancedTable({ apiUrl }) {
                         />
                       </TableCell> */}
                       {/* <TableCell align="left">{row.Player_Id}</TableCell> */}
-                      <TableCell align="left">
+                      <TableCell
+                        align="left"
+                        sx={{
+                          position: "sticky",
+                          left: 0,
+                          backgroundColor: "background.paper",
+                          zIndex: 1,
+                        }}
+                      >
                         <span style={{ fontWeight: "bold" }}>{row.Name}</span>{" "}
                         <span>({row.Pro_Team})</span>
                       </TableCell>
