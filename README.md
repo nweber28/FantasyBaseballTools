@@ -1,4 +1,4 @@
-# FantasyBaseballTools
+# ESPN Fantasy Draft Evaluator
 
 **FantasyBaseballTools** is a web application that calculates a **draft value metric** for each player in a private ESPN Fantasy Baseball league. The goal is to analyze how effective each draft pick was, identifying potential **steals** and **busts** based on a player's performance compared to their draft position.
 
