@@ -31,8 +31,9 @@ function transformPlayerToRow(player) {
     Draft_Metric: parseFloat(player.draft_metric),
     Rostered: player.currently_rostered ? "Yes" : "No",
     Fantasy_Team_Id: FANTASY_TEAM_ABBREVS[player.fantasy_team_id] || "N/A",
+    Draft_Team_Id: FANTASY_TEAM_ABBREVS[player.draft_team_id] || "N/A",
     Position_Id: POSITION_IDS[player.position_id] || "N/A",
-    Pro_Team: MLB_TEAM_IDS[player.pro_team] || "N/A",
+    Pro_Team: MLB_TEAM_IDS[player.pro_team] || "FA",
   };
 }
 
@@ -59,17 +60,17 @@ function getComparator(order, orderBy) {
 }
 
 const headCells = [
-  {
-    id: "Player_Id",
-    numeric: false,
-    disablePadding: true,
-    label: "Player Id",
-  },
+  // {
+  //   id: "Player_Id",
+  //   numeric: false,
+  //   disablePadding: true,
+  //   label: "Player Id",
+  // },
   {
     id: "Name",
     numeric: false,
     disablePadding: false,
-    label: "Player Name",
+    label: "Player",
   },
   {
     id: "Position_Id",
@@ -77,17 +78,23 @@ const headCells = [
     disablePadding: false,
     label: "Position",
   },
-  {
-    id: "Pro_Team",
-    numeric: false,
-    disablePadding: false,
-    label: "Pro Team",
-  },
+  // {
+  //   id: "Pro_Team",
+  //   numeric: false,
+  //   disablePadding: false,
+  //   label: "Pro Team",
+  // },
   {
     id: "Fantasy_Team_Id",
     numeric: false,
     disablePadding: false,
-    label: "Fantasy Team",
+    label: "Current Team",
+  },
+  {
+    id: "Draft_Team_Id",
+    numeric: false,
+    disablePadding: false,
+    label: "Draft Team",
   },
   {
     id: "Rostered",
@@ -136,12 +143,20 @@ function EnhancedTableHead(props) {
             }}
           />
         </TableCell> */}
-        {headCells.map((headCell) => (
+        {headCells.map((headCell, index) => (
           <TableCell
             key={headCell.id}
             align={headCell.numeric ? "right" : "left"}
             padding={headCell.disablePadding ? "none" : "normal"}
             sortDirection={orderBy === headCell.id ? order : false}
+            sx={{
+              ...(index === 0 && {
+                position: "sticky",
+                left: 0,
+                backgroundColor: "background.paper",
+                zIndex: 2,
+              }),
+            }}
           >
             <TableSortLabel
               active={orderBy === headCell.id}
@@ -231,7 +246,7 @@ EnhancedTableToolbar.propTypes = {
 
 export default function EnhancedTable({ apiUrl }) {
   const [order, setOrder] = React.useState("asc");
-  const [orderBy, setOrderBy] = React.useState("Fantasy_Team_Id");
+  const [orderBy, setOrderBy] = React.useState("Draft_Metric");
   const [selected, setSelected] = React.useState([]);
   const [page, setPage] = React.useState(0);
   const [dense, setDense] = React.useState(false);
@@ -322,7 +337,6 @@ export default function EnhancedTable({ apiUrl }) {
         <p style={{ padding: 16 }}>Loading...</p>
       ) : (
         <Paper sx={{ width: "100%", mb: 2 }}>
-          <EnhancedTableToolbar numSelected={selected.length} />
           <TableContainer>
             <Table
               sx={{ minWidth: 750 }}
@@ -365,11 +379,23 @@ export default function EnhancedTable({ apiUrl }) {
                           }}
                         />
                       </TableCell> */}
-                      <TableCell align="left">{row.Player_Id}</TableCell>
-                      <TableCell align="left">{row.Name}</TableCell>
+                      {/* <TableCell align="left">{row.Player_Id}</TableCell> */}
+                      <TableCell
+                        align="left"
+                        sx={{
+                          position: "sticky",
+                          left: 0,
+                          backgroundColor: "background.paper",
+                          zIndex: 1,
+                        }}
+                      >
+                        <span style={{ fontWeight: "bold" }}>{row.Name}</span>{" "}
+                        <span>({row.Pro_Team})</span>
+                      </TableCell>
                       <TableCell align="left">{row.Position_Id}</TableCell>
-                      <TableCell align="left">{row.Pro_Team}</TableCell>
+                      {/* <TableCell align="left">{row.Pro_Team}</TableCell> */}
                       <TableCell align="left">{row.Fantasy_Team_Id}</TableCell>
+                      <TableCell align="left">{row.Draft_Team_Id}</TableCell>
                       <TableCell align="left">{row.Rostered}</TableCell>
                       <TableCell align="right">{row.Points_Scored}</TableCell>
                       <TableCell align="right">{row.Draft_Metric}</TableCell>

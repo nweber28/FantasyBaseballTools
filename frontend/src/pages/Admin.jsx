@@ -1,49 +1,56 @@
 import React, { useState } from "react";
+import NavBar from "../components/NavBar";
+import Button from "@mui/material/Button";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 
 function Admin() {
   const [playerPoints, setPlayerPoints] = useState([]);
+  const [fetchSuccess, setFetchSuccess] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+
   const fetchPlayerPoints = () => {
+    setFetchSuccess(false); // Reset state before new request
+    setFetchError(false);
+
     fetch("http://localhost:8000/points/")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         setPlayerPoints(data.playerPoints);
-        //setRefreshKey((prevKey) => prevKey + 1);
+        setFetchSuccess(true);
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        console.error(err);
+        setFetchError(true);
+      });
   };
 
   return (
     <div>
-      Admin Page
-      <div>
-        <h1>Player Points 2025</h1>
-        <button onClick={fetchPlayerPoints}>Load Player Points</button>
+      <NavBar />
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          marginY: 4,
+        }}
+      >
+        <Button variant="contained" onClick={fetchPlayerPoints}>
+          Fetch Player Points
+        </Button>
+      </Box>
 
-        {playerPoints.length > 0 &&
-          playerPoints.map((team) => (
-            <div key={team.teamId} style={{ marginBottom: "2rem" }}>
-              <h2>Team {team.teamId}</h2>
-              <table border="1" cellPadding="5">
-                <thead>
-                  <tr>
-                    <th>Player ID</th>
-                    <th>Player Name</th>
-                    <th>Points Scored</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {team.players.map((player) => (
-                    <tr key={player.id}>
-                      <td>{player.id}</td>
-                      <td>{player.fullName}</td>
-                      <td>{player.points ?? "N/A"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
-      </div>
+      {fetchSuccess && (
+        <Alert severity="success">Players fetched successfully</Alert>
+      )}
+      {fetchError && (
+        <Alert severity="error">Failed to fetch player points</Alert>
+      )}
     </div>
   );
 }
